@@ -1,0 +1,32 @@
+{
+  "domain": "port-machine-maintenance",
+  "version": 1,
+  "sample_id": "092201-002",
+  "record_types": [
+    "设备配置",
+    "报警事件",
+    "诊断会话",
+    "检修方案",
+    "备件流转",
+    "放行结论"
+  ],
+  "workflow_states": [
+    "运行中",
+    "已告警",
+    "诊断中",
+    "检修中",
+    "待复测",
+    "已放行"
+  ],
+  "facts": [
+    "智慧港口依赖自动化起重机和智能车辆",
+    "多数设备由远程操控室运行",
+    "设备故障会直接影响港口作业连续性"
+  ],
+  "sample": {
+    "machine": "自动场桥RMG-03",
+    "component": "吊具高度传感器",
+    "software": "ctrl-4.8.2",
+    "outage_minutes": 45
+  }
+}
