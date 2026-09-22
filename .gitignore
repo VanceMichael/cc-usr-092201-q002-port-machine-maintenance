@@ -10,3 +10,6 @@ coverage/
 __pycache__/
 *.py[cod]
 .DS_Store
+
+# 本地运行生成的事件库与密钥环
+data/
