@@ -9,7 +9,13 @@
     "record_types",
     "workflow_states",
     "facts",
-    "sample"
+    "sample",
+    "signoff_actions",
+    "parallel_maintenance",
+    "offline_recording",
+    "recall_linkage",
+    "dispatch_view_fields",
+    "release_elements"
   ],
   "properties": {
     "domain": {
@@ -43,6 +49,65 @@
       "items": {
         "type": "string"
       }
+    },
+    "capability_catalog": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "diagnostic_scopes": {
+      "type": "object",
+      "required": ["session_required", "allowed_scopes", "rules"],
+      "properties": {
+        "session_required": { "const": true },
+        "allowed_scopes": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "denied_scopes": { "type": "array", "items": { "type": "string" } },
+        "rules": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "signoff_actions": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["action", "required_fields"],
+        "properties": {
+          "action": { "enum": ["换件", "参数回退", "临时旁路", "复测"] },
+          "required_fields": { "type": "array", "minItems": 2, "items": { "type": "string" } }
+        }
+      }
+    },
+    "parallel_maintenance": {
+      "type": "object",
+      "required": ["rule", "lock_granularity", "conflict_resolution"]
+    },
+    "offline_recording": {
+      "type": "object",
+      "required": ["rule", "required_fields", "ordering"],
+      "properties": {
+        "required_fields": {
+          "type": "array",
+          "contains": { "const": "occurred_at" }
+        }
+      }
+    },
+    "recall_linkage": {
+      "type": "object",
+      "required": ["rule", "match_key", "effects"]
+    },
+    "dispatch_view_fields": {
+      "type": "array",
+      "allOf": [
+        { "contains": { "const": "预计恢复时间" } },
+        { "contains": { "const": "仍可承担的动作" } }
+      ],
+      "items": { "type": "string" }
+    },
+    "release_elements": {
+      "type": "array",
+      "minItems": 5,
+      "items": { "type": "string" }
     },
     "sample": {
       "type": "object",

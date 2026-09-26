@@ -1,6 +1,6 @@
 {
   "domain": "port-machine-maintenance",
-  "version": 1,
+  "version": 2,
   "sample_id": "092201-002",
   "record_types": [
     "设备配置",
@@ -8,7 +8,15 @@
     "诊断会话",
     "检修方案",
     "备件流转",
-    "放行结论"
+    "放行结论",
+    "部件序列号台账",
+    "控制软件参数",
+    "校准记录",
+    "人员资质",
+    "停机窗口",
+    "处置签署",
+    "召回公告",
+    "能力状态"
   ],
   "workflow_states": [
     "运行中",
@@ -16,17 +24,275 @@
     "诊断中",
     "检修中",
     "待复测",
+    "能力暂停",
+    "限制运行",
     "已放行"
   ],
   "facts": [
     "智慧港口依赖自动化起重机和智能车辆",
     "多数设备由远程操控室运行",
-    "设备故障会直接影响港口作业连续性"
+    "设备故障会直接影响港口作业连续性",
+    "报警原文是处置链起点，必须原样保留不得改写",
+    "维护主管首先要区分机械故障、校准漂移与未经确认的软件参数",
+    "远程诊断只能在授权会话内按最小必要范围取用数据",
+    "换件、参数回退、临时旁路与复测必须各自签署留痕",
+    "并行检修以锁定范围互不重叠来防止互相覆盖",
+    "离线补录必须同时保留实际发生时间与系统记录时间",
+    "召回批次命中关联设备时，相应能力随即暂停",
+    "调度席需要预计恢复时间与仍可承担动作，而非笼统的维修中",
+    "最终放行须回答采用版本、处置人、工具、部件与复核同意理由"
+  ],
+  "capability_catalog": [
+    "自动着箱",
+    "远程起落吊",
+    "远程人工对位着箱",
+    "空吊具移动",
+    "自动驳运交接"
+  ],
+  "diagnostic_scopes": {
+    "session_required": true,
+    "principle": "最小必要",
+    "allowed_scopes": [
+      "设备配置:只读",
+      "报警事件:只读",
+      "部件序列号台账:只读",
+      "校准记录:只读",
+      "控制软件参数:只读",
+      "检修方案:按工单授权"
+    ],
+    "denied_scopes": [
+      "人员资质:联系方式",
+      "与本次报警无关设备的历史数据",
+      "未经授权的控制软件参数写入"
+    ],
+    "rules": [
+      "会话须绑定报警编号、用途与到期时间",
+      "超范围取数必须二次授权并记入会话日志",
+      "会话结束后取用凭据立即失效"
+    ]
+  },
+  "signoff_actions": [
+    {
+      "action": "换件",
+      "required_fields": ["处置人", "人员资质编号", "工具", "旧件序列号", "新件序列号", "新件批次", "发生时间", "签署时间"]
+    },
+    {
+      "action": "参数回退",
+      "required_fields": ["处置人", "人员资质编号", "参数名", "回退前版本", "回退后版本", "发生时间", "签署时间"]
+    },
+    {
+      "action": "临时旁路",
+      "required_fields": ["批准人", "旁路对象", "开始时间", "到期时间", "残余风险", "到期前复核人"]
+    },
+    {
+      "action": "复测",
+      "required_fields": ["复测人", "复测项目", "实测值", "判据", "结论", "发生时间"]
+    }
+  ],
+  "parallel_maintenance": {
+    "rule": "每张工单声明锁定范围，同一设备上并行工单的锁定范围不得相交",
+    "lock_granularity": ["设备", "部件", "软件参数", "校准通道"],
+    "conflict_resolution": "范围相交时后提交工单排队等待，不得覆盖先到工单"
+  },
+  "offline_recording": {
+    "rule": "离线补录允许晚于事件登记，但实际发生时间不得被记录时间覆盖",
+    "required_fields": ["occurred_at", "recorded_at", "补录人", "补录原因"],
+    "ordering": "时间线排序以 occurred_at 为准，审计展示同时显示两个时间"
+  },
+  "recall_linkage": {
+    "rule": "召回公告按批次匹配部件序列号台账，命中设备的相关能力立即转为能力暂停",
+    "match_key": "部件批次",
+    "effects": ["能力目录中相关动作立即暂停", "已排停机窗口重新评估", "暂停持续到换件并复测通过"],
+    "notices": ["召回公告", "能力状态变更", "调度视图刷新"]
+  },
+  "dispatch_view_fields": [
+    "设备编号",
+    "当前状态",
+    "预计恢复时间",
+    "仍可承担的动作",
+    "暂停的动作",
+    "放行门槛"
+  ],
+  "release_elements": [
+    "采用的软件与参数版本",
+    "处置人及其资质",
+    "使用的工具",
+    "处理的部件及序列号",
+    "复核人同意恢复的理由"
   ],
   "sample": {
     "machine": "自动场桥RMG-03",
+    "machine_id": "RMG-03",
     "component": "吊具高度传感器",
+    "component_id": "SP-H-SENSOR",
     "software": "ctrl-4.8.2",
-    "outage_minutes": 45
+    "outage_minutes": 45,
+    "alarm": {
+      "alarm_id": "ALM-0922-0412",
+      "state": "已告警",
+      "raw_text": "SPREADER HOIST HEIGHT SENSOR SIGNAL JUMP >85mm; PLC ch=AI-7 raw=4.7mA intermittent @2026-09-22T08:14:07+08:00",
+      "raised_at": "2026-09-22T08:14:07+08:00",
+      "source": "PLC-ctrl-4.8.2",
+      "acknowledged_by": "远程司机 RD-118",
+      "candidate_causes": ["机械故障", "校准漂移", "未经确认的软件参数"]
+    },
+    "diagnostic_session": {
+      "session_id": "DS-0922-17",
+      "bound_alarm": "ALM-0922-0412",
+      "purpose": "吊具高度信号跳变远程定因",
+      "engineer_role": "远程诊断工程师",
+      "scopes_granted": ["设备配置:只读", "报警事件:只读", "部件序列号台账:只读", "校准记录:只读", "控制软件参数:只读"],
+      "expires_at": "2026-09-22T10:00:00+08:00",
+      "findings": [
+        {
+          "cause": "未经确认的软件参数",
+          "evidence": "参数 SPREADER_HEIGHT_ZERO 于夜班窗口由 0.0mm 改为 12.0mm，无参数回退签署记录"
+        },
+        {
+          "cause": "机械故障",
+          "evidence": "序列号 SN-SP-H-2207-1183 原始读数抖动，机械连杆检查未见卡滞"
+        },
+        {
+          "cause": "校准漂移",
+          "evidence": "最近校准记录 CAL-0905-06 在判据内，排除校准漂移为首要原因"
+        }
+      ]
+    },
+    "config_snapshot": {
+      "installed_part": {"component_id": "SP-H-SENSOR", "serial": "SN-SP-H-2207-1183", "batch": "LOT-H2207", "installed_since": "2025-11-02"},
+      "software": {"version": "ctrl-4.8.2", "parameter": "SPREADER_HEIGHT_ZERO", "observed_value_mm": 12.0, "baseline_value_mm": 0.0},
+      "last_calibration": {"id": "CAL-0905-06", "zero_error_mm": 1.2, "criterion_mm": 5.0, "result": "合格"}
+    },
+    "outage_window": {
+      "window_id": "WIN-0922-03",
+      "planned_start": "2026-09-22T09:10:00+08:00",
+      "planned_end": "2026-09-22T09:55:00+08:00",
+      "vessel_impact": "靠泊船期 MV-HAIFENG-6 泊位作业顺延评估"
+    },
+    "work_orders": [
+      {
+        "work_order": "WO-0922-61",
+        "team": "机械组",
+        "task": "更换吊具高度传感器",
+        "lock_scope": ["RMG-03:SP-H-SENSOR"],
+        "requires_qualification": "Q-MECH-RMG",
+        "parallel_with": "WO-0922-62"
+      },
+      {
+        "work_order": "WO-0922-62",
+        "team": "控制组",
+        "task": "回退吊具高度零点参数",
+        "lock_scope": ["RMG-03:ctrl-4.8.2:SPREADER_HEIGHT_ZERO"],
+        "requires_qualification": "Q-CTRL-RMG",
+        "parallel_with": "WO-0922-61"
+      }
+    ],
+    "personnel_qualifications": [
+      {"person": "机械检修工 M-204", "qualification_id": "Q-MECH-RMG-204", "qualification": "港机机械维修", "valid_until": "2027-03-31"},
+      {"person": "控制工程师 C-087", "qualification_id": "Q-CTRL-RMG-087", "qualification": "港机控制软件参数", "valid_until": "2026-12-15"},
+      {"person": "放行复核人 S-011", "qualification_id": "Q-REL-RMG-011", "qualification": "检修放行复核", "valid_until": "2027-06-30"}
+    ],
+    "signoffs": [
+      {
+        "work_order": "WO-0922-61",
+        "action": "换件",
+        "offline_record": true,
+        "occurred_at": "2026-09-22T09:32:00+08:00",
+        "recorded_at": "2026-09-22T09:47:00+08:00",
+        "recorded_by": "机械检修工 M-204",
+        "offline_reason": "吊具井道无网络信号，回到司机室后补录",
+        "qualification_id": "Q-MECH-RMG-204",
+        "tool": "数显扭矩扳手 WRENCH-C-07（校准有效期至 2026-12-01）",
+        "old_serial": "SN-SP-H-2207-1183",
+        "new_serial": "SN-SP-H-2211-0426",
+        "new_batch": "LOT-H2211"
+      },
+      {
+        "work_order": "WO-0922-62",
+        "action": "参数回退",
+        "offline_record": false,
+        "occurred_at": "2026-09-22T09:20:00+08:00",
+        "recorded_at": "2026-09-22T09:20:00+08:00",
+        "recorded_by": "控制工程师 C-087",
+        "qualification_id": "Q-CTRL-RMG-087",
+        "parameter": "SPREADER_HEIGHT_ZERO",
+        "version_before": "ctrl-4.8.2/param-set-20",
+        "version_after": "ctrl-4.8.2/param-set-19",
+        "value_after_mm": 0.0
+      },
+      {
+        "work_order": "WO-0922-61",
+        "action": "临时旁路",
+        "offline_record": false,
+        "occurred_at": "2026-09-22T09:12:00+08:00",
+        "recorded_at": "2026-09-22T09:12:00+08:00",
+        "approved_by": "维护主管 SUP-03",
+        "bypass_target": "报警通道 AI-7 自动停机联锁",
+        "expires_at": "2026-09-22T09:50:00+08:00",
+        "residual_risk": "旁路期间仅允许远程人工对位着箱，禁止自动着箱",
+        "review_before_expiry_by": "放行复核人 S-011"
+      },
+      {
+        "work_order": "WO-0922-61",
+        "action": "复测",
+        "offline_record": false,
+        "occurred_at": "2026-09-22T10:26:00+08:00",
+        "recorded_at": "2026-09-22T10:26:00+08:00",
+        "recorded_by": "机械检修工 M-204",
+        "items": [
+          {"item": "全行程高度示值比对", "measured": "最大偏差 1.8mm", "criterion": "≤5.0mm", "result": "合格"},
+          {"item": "联锁恢复触发试验", "measured": "3/3 次正常停机", "criterion": "3/3", "result": "合格"}
+        ]
+      }
+    ],
+    "spare_flow": [
+      {"direction": "出库", "serial": "SN-SP-H-2211-0426", "batch": "LOT-H2211", "work_order": "WO-0922-61", "at": "2026-09-22T09:15:00+08:00"},
+      {"direction": "退库待判", "serial": "SN-SP-H-2207-1183", "batch": "LOT-H2207", "work_order": "WO-0922-61", "at": "2026-09-22T09:47:00+08:00"}
+    ],
+    "recall": {
+      "notice_id": "RC-2026-031",
+      "issued_at": "2026-09-22T10:05:00+08:00",
+      "recalled_batches": ["LOT-H2207"],
+      "defect": "高度传感器温补电路在温差工况下输出跳变",
+      "matched_machines": [
+        {"machine_id": "RMG-03", "matched_serial": "SN-SP-H-2207-1183", "note": "旧件已退库，确认本机未继续使用该批次"},
+        {"machine_id": "RMG-05", "matched_serial": "SN-SP-H-2207-1191", "note": "在役命中"},
+        {"machine_id": "RMG-07", "matched_serial": "SN-SP-H-2207-1204", "note": "在役命中"}
+      ],
+      "capability_effect": [
+        {"machine_id": "RMG-05", "state": "能力暂停", "suspended_capabilities": ["自动着箱", "远程起落吊"]},
+        {"machine_id": "RMG-07", "state": "能力暂停", "suspended_capabilities": ["自动着箱", "远程起落吊"]}
+      ],
+      "rmg03_disposition": "换上的 SN-SP-H-2211-0426 属 LOT-H2211，不在召回范围，可进入复测放行"
+    },
+    "capability_states": [
+      {"machine_id": "RMG-03", "state": "限制运行", "window": "2026-09-22T09:12:00+08:00/2026-09-22T10:30:00+08:00", "available_capabilities": ["远程人工对位着箱", "空吊具移动"], "suspended_capabilities": ["自动着箱"]},
+      {"machine_id": "RMG-05", "state": "能力暂停", "window": "2026-09-22T10:05:00+08:00/..", "available_capabilities": [], "suspended_capabilities": ["自动着箱", "远程起落吊", "远程人工对位着箱", "空吊具移动"]},
+      {"machine_id": "RMG-07", "state": "能力暂停", "window": "2026-09-22T10:05:00+08:00/..", "available_capabilities": [], "suspended_capabilities": ["自动着箱", "远程起落吊", "远程人工对位着箱", "空吊具移动"]}
+    ],
+    "dispatch_view": {
+      "machine_id": "RMG-03",
+      "state": "限制运行",
+      "eta_resume": "2026-09-22T10:30:00+08:00",
+      "available_actions": ["远程人工对位着箱", "空吊具移动"],
+      "suspended_actions": ["自动着箱"],
+      "release_gate": "复测合格 + 临时旁路到期前完成联锁恢复 + 复核签署",
+      "related_holds": [
+        {"machine_id": "RMG-05", "state": "能力暂停", "eta_resume": null, "note": "等待 LOT-H2211 备件换件"},
+        {"machine_id": "RMG-07", "state": "能力暂停", "eta_resume": null, "note": "等待 LOT-H2211 备件换件"}
+      ]
+    },
+    "release": {
+      "release_id": "REL-0922-09",
+      "machine_id": "RMG-03",
+      "state": "已放行",
+      "released_at": "2026-09-22T10:30:00+08:00",
+      "adopted_version": "ctrl-4.8.2/param-set-19（SPREADER_HEIGHT_ZERO=0.0mm）",
+      "resolved_by": "机械检修工 M-204（Q-MECH-RMG-204）与控制工程师 C-087（Q-CTRL-RMG-087）",
+      "tool_used": "数显扭矩扳手 WRENCH-C-07",
+      "component_resolved": {"component": "吊具高度传感器", "serial": "SN-SP-H-2211-0426", "batch": "LOT-H2211"},
+      "reviewer": "放行复核人 S-011（Q-REL-RMG-011）",
+      "review_rationale": "参数已回退至有签署基线的 param-set-19；新件序列号与批次均不在召回 RC-2026-031 范围；复测两项全部合格；AI-7 联锁已恢复且临时旁路在到期前关闭，同意恢复全部能力。"
+    }
   }
 }
